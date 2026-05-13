@@ -1,0 +1,103 @@
+diff --git a/emacs.c b/emacs.c
+index 78ac2e4..17d5de0 100644
+--- a/emacs.c
++++ b/emacs.c
+@@ -876,7 +876,7 @@ kb_find_hist_func(char c)
+ 	line[0] = c;
+ 	line[1] = '\0';
+ 	TAILQ_FOREACH(k, &kblist, entry)
+-		if (!strcmp(k->seq, line))
++		if (!strcmp((char *)k->seq, line))
+ 			return (k->ftab->xf_func);
+ 
+ 	return (x_insert);
+@@ -1348,7 +1348,7 @@ kb_add_string(kb_func func, void *args, char *str)
+ 	k->ftab = xf;
+ 	k->args = args ? strdup(args) : NULL;
+ 
+-	strlcpy(k->seq, str, count + 1);
++	strlcpy((char *)k->seq, str, count + 1);
+ 
+ 	TAILQ_INSERT_TAIL(&kblist, k, entry);
+ 
+@@ -1381,10 +1381,10 @@ kb_print(struct kb_entry *k)
+ {
+ 	if (!(k->ftab->xf_flags & XF_NOBIND))
+ 		shprintf("%s = %s\n",
+-		    kb_decode(k->seq), k->ftab->xf_name);
++		    kb_decode((char *)k->seq), k->ftab->xf_name);
+ 	else if (k->args) {
+-		shprintf("%s = ", kb_decode(k->seq));
+-		shprintf("'%s'\n", kb_decode(k->args));
++		shprintf("%s = ", kb_decode((char *)k->seq));
++		shprintf("'%s'\n", kb_decode((char *)k->args));
+ 	}
+ }
+ 
+@@ -1425,7 +1425,7 @@ x_bind(const char *a1, const char *a2,
+ 	if (a2 == NULL) {
+ 		/* print binding */
+ 		TAILQ_FOREACH(k, &kblist, entry)
+-			if (!strcmp(k->seq, in)) {
++			if (!strcmp((char *)k->seq, in)) {
+ 				kb_print(k);
+ 				return (0);
+ 			}
+@@ -1436,7 +1436,7 @@ x_bind(const char *a1, const char *a2,
+ 	if (strlen(a2) == 0) {
+ 		/* clear binding */
+ 		TAILQ_FOREACH_SAFE(k, &kblist, entry, kb)
+-			if (!strcmp(k->seq, in)) {
++			if (!strcmp((char *)k->seq, in)) {
+ 				kb_del(k);
+ 				break;
+ 			}
+@@ -1447,7 +1447,7 @@ x_bind(const char *a1, const char *a2,
+ 	if (macro) {
+ 		/* delete old mapping */
+ 		TAILQ_FOREACH_SAFE(k, &kblist, entry, kb)
+-			if (!strcmp(k->seq, in)) {
++			if (!strcmp((char *)k->seq, in)) {
+ 				kb_del(k);
+ 				break;
+ 			}
+@@ -1462,7 +1462,7 @@ x_bind(const char *a1, const char *a2,
+ 		if (!strcmp(x_ftab[i].xf_name, a2)) {
+ 			/* delete old mapping */
+ 			TAILQ_FOREACH_SAFE(k, &kblist, entry, kb)
+-				if (!strcmp(k->seq, in)) {
++				if (!strcmp((char *)k->seq, in)) {
+ 					kb_del(k);
+ 					break;
+ 				}
+diff --git a/misc.c b/misc.c
+index 428f183..31aaf7d 100644
+--- a/misc.c
++++ b/misc.c
+@@ -721,7 +721,7 @@ posix_cclass(const unsigned char *pattern, int test, const unsigned char **ep)
+ 	size_t len;
+ 	int rval = 0;
+ 
+-	if ((colon = strchr(pattern, ':')) == NULL || colon[1] != MAGIC) {
++	if ((colon = (const unsigned char *)strchr((const char *)pattern, ':')) == NULL || colon[1] != MAGIC) {
+ 		*ep = pattern - 2;
+ 		return -1;
+ 	}
+@@ -729,7 +729,7 @@ posix_cclass(const unsigned char *pattern, int test, const unsigned char **ep)
+ 	len = (size_t)(colon - pattern);
+ 
+ 	for (cc = cclasses; cc->name != NULL; cc++) {
+-		if (!strncmp(pattern, cc->name, len) && cc->name[len] == '\0') {
++		if (!strncmp((const char *)pattern, cc->name, len) && cc->name[len] == '\0') {
+ 			if (cc->isctype(test))
+ 				rval = 1;
+ 			break;
+@@ -754,7 +754,7 @@ cclass(const unsigned char *p, int sub)
+ 		if ((p[0] == MAGIC && p[1] == '[' && p[2] == ':') ||
+ 		    (p[0] == '[' && p[1] == ':')) {
+ 			do {
+-				const char *pp = p + (*p == MAGIC) + 2;
++				const unsigned char *pp = p + (*p == MAGIC) + 2;
+ 				rv = posix_cclass(pp, sub, &p);
+ 				switch (rv) {
+ 				case 1:

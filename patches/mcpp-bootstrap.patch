@@ -1,0 +1,15 @@
+diff --git a/src/system.c b/src/system.c
+index a6ff95b..5ff2216 100644
+--- a/src/system.c
++++ b/src/system.c
+@@ -35,6 +35,10 @@
+  * To port MCPP for the systems not yet ported, you must
+  *      1. specify the constants in "configed.H" or "noconfig.H",
+  *      2. append the system-dependent routines in this file.
++
++#ifndef _MSC_VER
++#  include <unistd.h>
++#endif
+  */
+ #if PREPROCESSED
+ #include    "mcpp.H"

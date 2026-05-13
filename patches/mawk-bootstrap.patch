@@ -1,0 +1,13 @@
+diff --git a/Makefile.in b/Makefile.in
+index 8b156e6..23d61db 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -14,7 +14,7 @@
+ # the GNU General Public License, version 2, 1991.
+ ###############################################################################
+ 
+-SHELL=/bin/sh
++SHELL=@SHELL@
+ 
+ ####################################
+ 

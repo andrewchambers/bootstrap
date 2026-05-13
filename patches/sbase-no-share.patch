@@ -1,0 +1,15 @@
+diff --git a/scripts/install b/scripts/install
+index b14c9f4..a9c76ca 100755
+--- a/scripts/install
++++ b/scripts/install
+@@ -4,6 +4,10 @@ set -e
+ 
+ while read type src dst perm
+ do
++	case $dst in
++	*/share/*) continue ;;
++	esac
++
+ 	case $type in
+ 	d)
+ 		mkdir -p $src

@@ -1,0 +1,83 @@
+diff --git a/lib/fnmatch.c b/lib/fnmatch.c
+index 01da376..ee02cc6 100644
+--- a/lib/fnmatch.c
++++ b/lib/fnmatch.c
+@@ -27,7 +27,7 @@ USA.  */
+ #endif
+ 
+ #include <errno.h>
+-#include <fnmatch.h>
++#include "fnmatch.h"
+ #include <ctype.h>
+ 
+ #if HAVE_STRING_H || defined _LIBC
+@@ -121,7 +121,7 @@ USA.  */
+    whose names are inconsistent.  */
+ 
+ # if !defined _LIBC && !defined getenv
+-extern char *getenv ();
++extern char *getenv (const char *);
+ # endif
+ 
+ # ifndef errno
+diff --git a/lib/glob.c b/lib/glob.c
+index 271a2d1..896a6e9 100644
+--- a/lib/glob.c
++++ b/lib/glob.c
+@@ -172,7 +172,7 @@ extern char *alloca ();
+ # undef	FNM_NOESCAPE
+ # undef	FNM_PERIOD
+ #endif
+-#include <fnmatch.h>
++#include "fnmatch.h"
+ 
+ /* Some system header files erroneously define these.
+    We want our own definitions from <glob.h> to take precedence.  */
+@@ -186,7 +186,7 @@ extern char *alloca ();
+ # undef	GLOB_NOESCAPE
+ # undef	GLOB_PERIOD
+ #endif
+-#include <glob.h>
++#include "glob.h"
+ 
+ #if !defined __alloca
+ # define __alloca alloca
+diff --git a/src/ar.c b/src/ar.c
+index 73fc095..2e7977f 100644
+--- a/src/ar.c
++++ b/src/ar.c
+@@ -21,7 +21,7 @@ this program.  If not, see <https://www.gnu.org/licenses/>.  */
+ 
+ #include "filedef.h"
+ #include "dep.h"
+-#include <fnmatch.h>
++#include "../lib/fnmatch.h"
+ #include <intprops.h>
+ 
+ /* Return nonzero if NAME is an archive-member reference, zero if not.  An
+diff --git a/src/getopt.c b/src/getopt.c
+index 7a792de..76251cc 100644
+--- a/src/getopt.c
++++ b/src/getopt.c
+@@ -202,7 +202,7 @@ static char *posixly_correct;
+    whose names are inconsistent.  */
+ 
+ #ifndef getenv
+-extern char *getenv ();
++extern char *getenv (const char *);
+ #endif
+ 
+ static char *
+diff --git a/src/makeint.h b/src/makeint.h
+index db89631..48e1092 100644
+--- a/src/makeint.h
++++ b/src/makeint.h
+@@ -493,7 +493,7 @@ extern int unixy_shell;
+ extern struct rlimit stack_limit;
+ #endif
+ 
+-#include <glob.h>
++#include "../lib/glob.h"
+ 
+ #define NILF ((floc *)0)
+ 

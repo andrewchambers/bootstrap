@@ -1,0 +1,61 @@
+diff --git a/driver.c b/driver.c
+index 5c11de6..bfe3a61 100644
+--- a/driver.c
++++ b/driver.c
+@@ -62,6 +62,7 @@ static struct stageinfo stages[] = {
+ static char *tempdir;
+ static size_t tempidx;
+ static struct array tempobjs;
++static struct array libpaths;
+ 
+ static const char *const ignoreflags[] = {
+ 	"fPIC",
+@@ -178,6 +179,30 @@ tempobj(void)
+ 	return path;
+ }
+ 
++static void
++addlibpath(char *path)
++{
++	arrayaddptr(&libpaths, "-L");
++	arrayaddptr(&libpaths, path);
++}
++
++static void
++prependlibpaths(void)
++{
++	struct array cmd = {0};
++	struct stageinfo *s = &stages[LINK];
++	char **arg;
++
++	if (!libpaths.len)
++		return;
++
++	arg = s->cmd.val;
++	arrayaddptr(&cmd, *arg++);
++	arrayaddbuf(&cmd, libpaths.val, libpaths.len);
++	arrayaddbuf(&cmd, arg, s->cmd.len - sizeof(*arg));
++	s->cmd = cmd;
++}
++
+ static int
+ spawn(pid_t *pid, struct array *args, posix_spawn_file_actions_t *actions)
+ {
+@@ -509,8 +534,7 @@ ignore:
+ 				arrayaddptr(&stages[PREPROCESS].cmd, nextarg(&argv));
+ 				break;
+ 			case 'L':
+-				arrayaddptr(&stages[LINK].cmd, "-L");
+-				arrayaddptr(&stages[LINK].cmd, nextarg(&argv));
++				addlibpath(nextarg(&argv));
+ 				break;
+ 			case 'l':
+ 				input = arrayadd(&inputs, sizeof(*input));
+@@ -599,6 +623,7 @@ ignore:
+ 		}
+ 	}
+ 
++	prependlibpaths();
+ 	for (i = 0; i < countof(stages); ++i)
+ 		stages[i].cmdbase = stages[i].cmd.len;
+ 	if (inputs.len == 0)

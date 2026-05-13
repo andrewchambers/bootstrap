@@ -1,0 +1,47 @@
+diff --git a/Makefile b/Makefile
+index 2265b31..cc24f4e 100644
+--- a/Makefile
++++ b/Makefile
+@@ -95,7 +95,6 @@ LIB = libutf.a libutil.a
+ 
+ BIN =\
+ 	basename\
+-	bc\
+ 	cal\
+ 	cat\
+ 	chgrp\
+@@ -110,7 +109,6 @@ BIN =\
+ 	cron\
+ 	cut\
+ 	date\
+-	dc\
+ 	dd\
+ 	dirname\
+ 	du\
+@@ -134,7 +134,6 @@ BIN =\
+ 	logger\
+ 	logname\
+ 	ls\
+-	make/make\
+ 	md5sum\
+ 	mkdir\
+ 	mkfifo\
+@@ -208,7 +207,7 @@ all: scripts/make
+ 	+@$(SMAKE) $(BIN)
+ 
+ scripts/make:
+-	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ make/*.c
++	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ make/*.c
+ 
+ $(BIN): $(LIB)
+ 
+@@ -226,9 +225,7 @@ $(OBJ) $(BIN): $(HDR)
+ bc: bc.c
+ 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ bc.c $(LIB)
+ 
+-$(MAKEOBJ): make/make.h
+ 
+-make/make: $(MAKEOBJ)
+ 	$(CC) $(LDFLAGS) -o $@ $(MAKEOBJ) $(LIB)
+ 
+ libutf.a: $(LIBUTFOBJ)
