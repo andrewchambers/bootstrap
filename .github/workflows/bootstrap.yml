@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: bootstrap-${{ github.ref }}
@@ -14,7 +14,6 @@ concurrency:
 
 jobs:
   build:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
 
     steps:
@@ -38,15 +37,3 @@ jobs:
 
       - name: Validate committed checksums
         run: sha256sum -c bootstrap.sha256
-
-      - name: Push bootstrap artifacts
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f bootstrap.tar.xz bootstrap.tar.gz
-          if git diff --cached --quiet; then
-            echo "No bootstrap artifact changes."
-            exit 0
-          fi
-          git commit -m "Update bootstrap tarballs"
-          git push
