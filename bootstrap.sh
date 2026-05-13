@@ -43,7 +43,7 @@ ROOT_NEW=$WORK/root.new
 TARBALL_ROOT=$WORK/bootstrap-root
 # Some packages currently embed absolute build paths in binaries or libtool
 # metadata. Build only the archived final root under a stable /tmp path for now
-# so bootstrap.tar.* checksums match across local checkouts and CI runners.
+# so bootstrap.tar.* checksums do not depend on where this repo is checked out.
 FINAL_WORK=${FINAL_WORK:-/tmp/bootstrap-final}
 TARBALL=${TARBALL:-$SCRIPT_DIR/bootstrap.tar.xz}
 TARBALL_GZ=${TARBALL_GZ:-$SCRIPT_DIR/bootstrap.tar.gz}
