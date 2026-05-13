@@ -12,6 +12,7 @@ set -eu
 #   WORK=...       where cache, sources, builds, and roots live
 #   STAGES=2      number of self-hosted replacement stages to build
 #   JOBS=...      make parallelism
+#   FINAL_WORK=/tmp/bootstrap-final  stable workspace for the archived final root
 #   HOST_CC=cc    host compiler used only for the first root
 #   TARBALL=...      final xz archive path
 #   TARBALL_GZ=...   final gzip archive path
@@ -40,6 +41,10 @@ ROOT=$WORK/root
 ROOT_PREV=$WORK/root.prev
 ROOT_NEW=$WORK/root.new
 TARBALL_ROOT=$WORK/bootstrap-root
+# Some packages currently embed absolute build paths in binaries or libtool
+# metadata. Build only the archived final root under a stable /tmp path for now
+# so bootstrap.tar.* checksums match across local checkouts and CI runners.
+FINAL_WORK=${FINAL_WORK:-/tmp/bootstrap-final}
 TARBALL=${TARBALL:-$SCRIPT_DIR/bootstrap.tar.xz}
 TARBALL_GZ=${TARBALL_GZ:-$SCRIPT_DIR/bootstrap.tar.gz}
 CHECKSUM_FILE=${CHECKSUM_FILE:-$SCRIPT_DIR/bootstrap.sha256}
@@ -613,14 +618,21 @@ check_final_checksums() {
 }
 
 build_tarball() {
+	final_work=$FINAL_WORK
+
 	log "build final prefix=/ root"
+	BUILD=$final_work/build
+	TARBALL_ROOT=$final_work/bootstrap-root
+
+	rm -rf "$final_work"
+	mkdir -p "$final_work"
 	rm -rf "$TARBALL_ROOT"
 	build_stage "$ROOT" "$TARBALL_ROOT" /
 
 	final_tar=$TARBALL_ROOT/bin/tar
 	final_pigz=$TARBALL_ROOT/bin/pigz
 	final_xz=$TARBALL_ROOT/bin/xz
-	tar_tmp=$WORK/bootstrap.tar
+	tar_tmp=$final_work/bootstrap.tar
 
 	log "archive $(basename "$TARBALL")"
 	rm -f "$TARBALL" "$tar_tmp"
