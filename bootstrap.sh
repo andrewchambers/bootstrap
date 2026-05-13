@@ -151,7 +151,7 @@ prepare_sources() {
 	prepare_git mcpp https://github.com/museoa/mcpp.git 2.7.2.2
 	prepare_git oksh https://github.com/ibara/oksh.git oksh-7.8
 	prepare_git pigz https://github.com/madler/pigz.git fe4894f57739e3039a2ffc2a2a360d35e19bacbe
-	prepare_git tinybinutils https://github.com/andrewchambers/tinybinutils.git 4de4f4cb7f9d255ecb7c8a72620914aca055095f
+	prepare_git tinybinutils https://github.com/andrewchambers/tinybinutils.git 139b38c3990ab4513448cd5b9fc3bc3c6c7ea7fe
 	prepare_git sbase https://git.suckless.org/sbase c1341583c96307cb0e6152c963ed23c4d56a4278
 
 	prepare_tar xz-5.8.1.tar.gz https://tukaani.org/xz/xz-5.8.1.tar.gz \
