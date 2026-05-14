@@ -156,7 +156,9 @@ prepare_sources() {
 	prepare_git mcpp https://github.com/museoa/mcpp.git 2.7.2.2
 	prepare_git oksh https://github.com/ibara/oksh.git oksh-7.8
 	prepare_git pigz https://github.com/madler/pigz.git fe4894f57739e3039a2ffc2a2a360d35e19bacbe
-	prepare_git tinybinutils https://github.com/andrewchambers/tinybinutils.git 139b38c3990ab4513448cd5b9fc3bc3c6c7ea7fe
+	prepare_git tinybinutils https://github.com/andrewchambers/tinybinutils.git b823e4e183f55307aae23d09abb7942856b91edd
+	prepare_git neatld https://github.com/aligrudi/neatld.git 569a3c96f529c67741902987c3c57dad59ee388f
+	prepare_git minias https://github.com/andrewchambers/minias.git ae25f889dd75d0616a5ae5b16a5253971c42393d
 	prepare_git sbase https://git.suckless.org/sbase c1341583c96307cb0e6152c963ed23c4d56a4278
 
 	prepare_tar xz-5.8.1.tar.gz https://tukaani.org/xz/xz-5.8.1.tar.gz \
@@ -169,8 +171,11 @@ prepare_sources() {
 		6e1fde8ee7ad8a5c15382316863fd6b4c6d23fab781dd5ab0177ffa3ee9aae5c
 
 	apply_bootstrap_patch mcpp mcpp-bootstrap.patch
+	apply_bootstrap_patch musl musl-neatld-startfiles.patch
+	apply_bootstrap_patch cproc cproc-neatld-startfiles.patch
 	apply_bootstrap_patch make-4.4.1.tar.gz gnumake-bootstrap.patch
 	apply_bootstrap_patch mawk-1.3.4-20240819.tgz mawk-bootstrap.patch
+	apply_bootstrap_patch neatld neatld-bootstrap.patch
 	apply_bootstrap_patch oksh oksh-bootstrap.patch
 	apply_bootstrap_patch sbase sbase-bootstrap.patch
 	apply_bootstrap_patch sbase sbase-reproducible-tar.patch
@@ -396,7 +401,7 @@ build_tinybinutils() {
 	dir=$BUILD/tinybinutils
 	shell_path=
 	shell_path=$(prefix_path "$prefix" bin/sh)
-	log "build tinybinutils"
+	log "build tinyar"
 	copy_source tinybinutils "$dir"
 	(
 		cd "$dir"
@@ -406,14 +411,54 @@ build_tinybinutils() {
 			CC="$CC_FOR" \
 			CFLAGS="$CFLAGS_FOR" \
 			LDFLAGS="$LDFLAGS_FOR" \
-			tinyld tinyas tinyar
+			tinyar
 		mkdir -p "$out/bin"
-		cp tinyld tinyas tinyar "$out/bin/"
-		ln -sf tinyld "$out/bin/ld"
-		ln -sf tinyas "$out/bin/as"
+		cp tinyar "$out/bin/"
 		ln -sf tinyar "$out/bin/ar"
 		printf '%s\n' "#!$shell_path" 'exit 0' > "$out/bin/ranlib"
 		chmod +x "$out/bin/ranlib"
+	)
+}
+
+build_neatld() {
+	prev=$1
+	out=$2
+	dir=$BUILD/neatld
+	log "build neatld"
+	copy_source neatld "$dir"
+	(
+		cd "$dir"
+		set_stage_env "$prev" "$out"
+		"$MAKE_CMD" clean
+		"$MAKE_CMD" -j"$JOBS" \
+			CC="$CC_FOR" \
+			CFLAGS="$CFLAGS_FOR" \
+			LDFLAGS="$LDFLAGS_FOR" \
+			nld
+		mkdir -p "$out/bin"
+		cp nld "$out/bin/"
+		ln -sf nld "$out/bin/ld"
+	)
+}
+
+build_minias() {
+	prev=$1
+	out=$2
+	dir=$BUILD/minias
+	log "build minias"
+	copy_source minias "$dir"
+	(
+		cd "$dir"
+		set_stage_env "$prev" "$out"
+		"$MAKE_CMD" clean
+		"$MAKE_CMD" -j"$JOBS" \
+			CC="$CC_FOR" \
+			CFLAGS="$CFLAGS_FOR" \
+			LDFLAGS="$LDFLAGS_FOR" \
+			minias
+		mkdir -p "$out/bin"
+		cp minias "$out/bin/"
+		ln -sf minias "$out/bin/as"
 	)
 }
 
@@ -590,6 +635,8 @@ build_stage() {
 	build_mawk "$prev" "$out" "$prefix"
 	build_zlib "$prev" "$out" "$prefix"
 	build_tinybinutils "$prev" "$out" "$prefix"
+	build_neatld "$prev" "$out" "$prefix"
+	build_minias "$prev" "$out" "$prefix"
 	build_pigz "$prev" "$out" "$prefix"
 	build_xz "$prev" "$out" "$prefix"
 	build_oksh "$prev" "$out" "$prefix"

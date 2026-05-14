@@ -1,0 +1,188 @@
+diff --git a/nld.c b/nld.c
+index dce5ac5..175bdce 100644
+--- a/nld.c
++++ b/nld.c
+@@ -24,6 +24,13 @@
+ #include <string.h>
+ #include <unistd.h>
+ 
++#ifndef R_X86_64_GOTPCRELX
++#define R_X86_64_GOTPCRELX	41
++#endif
++#ifndef R_X86_64_REX_GOTPCRELX
++#define R_X86_64_REX_GOTPCRELX	42
++#endif
++
+ #define I_CS		0
+ #define I_DS		1
+ #define I_BSS		2
+@@ -36,9 +43,9 @@ static char *entry = "_start";			/* entry symbol */
+ static int e_machine;				/* target machine */
+ static int e_flags;				/* elf ehdr flags */
+ 
+-#define MAXSECS		(1 << 10)
+-#define MAXOBJS		(1 << 7)
+-#define MAXSYMS		(1 << 12)
++#define MAXSECS		(1 << 14)
++#define MAXOBJS		(1 << 12)
++#define MAXSYMS		(1 << 16)
+ #define PAGE_SIZE	(1 << 12)
+ #define PAGE_MASK	(PAGE_SIZE - 1)
+ #define MAXFILES	(1 << 10)
+@@ -100,7 +107,7 @@ struct bss_sym {
+ 
+ struct outelf {
+ 	Elf_Ehdr ehdr;
+-	Elf_Phdr phdr[MAXSECS];
++	Elf_Phdr phdr[MAXPHDRS];
+ 	int nph;
+ 	struct secmap secs[MAXSECS];
+ 	int nsecs;
+@@ -191,15 +198,28 @@ static int outelf_find(struct outelf *oe, char *name,
+ 			struct obj **sym_obj, Elf_Sym **sym_sym)
+ {
+ 	int i;
++	struct obj *weak_obj = NULL;
++	Elf_Sym *weak_sym = NULL;
+ 	for (i = 0; i < oe->nobjs; i++) {
+ 		struct obj *obj = &oe->objs[i];
+ 		Elf_Sym *sym;
+ 		if ((sym = obj_find(obj, name))) {
+-			*sym_obj = obj;
+-			*sym_sym = sym;
+-			return 0;
++			if (ELF_ST_BIND(sym->st_info) != STB_WEAK) {
++				*sym_obj = obj;
++				*sym_sym = sym;
++				return 0;
++			}
++			if (!weak_sym) {
++				weak_obj = obj;
++				weak_sym = sym;
++			}
+ 		}
+ 	}
++	if (weak_sym) {
++		*sym_obj = weak_obj;
++		*sym_sym = weak_sym;
++		return 0;
++	}
+ 	return 1;
+ }
+ 
+@@ -237,9 +257,24 @@ static unsigned long symval(struct outelf *oe, struct obj *obj, Elf_Sym *sym)
+ 	case STT_NOTYPE:
+ 	case STT_OBJECT:
+ 	case STT_FUNC:
+-		if (name && *name && sym->st_shndx == SHN_UNDEF)
+-			if (outelf_find(oe, name, &obj, &sym))
++		if (name && *name) {
++			int weak = ELF_ST_BIND(sym->st_info) == STB_WEAK;
++			if (sym->st_shndx == SHN_UNDEF) {
++				if (!outelf_find(oe, name, &obj, &sym))
++					break;
++				if (weak)
++					return 0;
+ 				die_undef(name);
++			}
++			if (weak)
++				outelf_find(oe, name, &obj, &sym);
++		}
++		break;
++	}
++	switch (ELF_ST_TYPE(sym->st_info)) {
++	case STT_NOTYPE:
++	case STT_OBJECT:
++	case STT_FUNC:
+ 		if (sym->st_shndx == SHN_COMMON)
+ 			return bss_addr(oe, sym);
+ 		s_idx = sym->st_shndx;
+@@ -279,9 +314,9 @@ static void outelf_reloc_sec(struct outelf *oe, int o_idx, int s_idx)
+ {
+ 	struct obj *obj = &oe->objs[o_idx];
+ 	Elf_Shdr *rel_shdr = &obj->shdr[s_idx];
+-	Elf_Rela *rels = (void *) obj->mem + obj->shdr[s_idx].sh_offset;
++	Elf_Rela *rels = (void *) (obj->mem + obj->shdr[s_idx].sh_offset);
+ 	Elf_Shdr *other_shdr = &obj->shdr[rel_shdr->sh_info];
+-	void *other = (void *) obj->mem + other_shdr->sh_offset;
++	char *other = obj->mem + other_shdr->sh_offset;
+ 	int nrels = rel_shdr->sh_size / sizeof(*rels);
+ 	unsigned long addr;
+ 	int i;
+@@ -290,7 +325,7 @@ static void outelf_reloc_sec(struct outelf *oe, int o_idx, int s_idx)
+ 		int sym_idx = ELF_R_SYM(rel->r_info);
+ 		Elf_Sym *sym = &obj->syms[sym_idx];
+ 		unsigned long val = symval(oe, obj, sym) + REL_ADDEND(rel);
+-		unsigned long *dst = other + rel->r_offset;
++		unsigned long *dst = (void *) (other + rel->r_offset);
+ 		switch (arch_rel(ELF_R_TYPE(rel->r_info))) {
+ 		case REL_ARM | R_ARM_NONE:
+ 		case REL_X86 | R_386_NONE:
+@@ -315,6 +350,16 @@ static void outelf_reloc_sec(struct outelf *oe, int o_idx, int s_idx)
+ 		case REL_X86 | R_386_PLT32:
+ 		case REL_X86 | R_386_PC32:
+ 		case REL_X64 | R_X86_64_PC32:
++		case REL_X64 | R_X86_64_PLT32:
++			addr = outelf_mapping(oe, other_shdr)->vaddr +
++				rel->r_offset;
++			*(unsigned int *) dst += val - addr;
++			break;
++		case REL_X64 | R_X86_64_GOTPCRELX:
++		case REL_X64 | R_X86_64_REX_GOTPCRELX:
++			if (((unsigned char *) dst)[-2] != 0x8b)
++				die("neatld: unsupported GOTPCRELX relocation!");
++			((unsigned char *) dst)[-2] = 0x8d;
+ 			addr = outelf_mapping(oe, other_shdr)->vaddr +
+ 				rel->r_offset;
+ 			*(unsigned int *) dst += val - addr;
+@@ -550,8 +595,10 @@ static int link_ds(struct outelf *oe, Elf_Phdr *phdr, unsigned long faddr,
+ 	int i;
+ 	for (i = 0; i < oe->nsecs; i++) {
+ 		struct secmap *sec = &oe->secs[i];
++		int alignment = MAX(sec->o_shdr->sh_addralign, 4);
+ 		if (!SEC_DATA(sec->o_shdr))
+ 			continue;
++		len = ALIGN(vaddr + len, alignment) - vaddr;
+ 		sec->vaddr = vaddr + len;
+ 		sec->faddr = faddr + len;
+ 		len += sec->o_shdr->sh_size;
+@@ -669,7 +716,7 @@ static int outelf_ar_link(struct outelf *oe, char *ar, int base)
+ 	ar_index = ar + 4;
+ 	ar_name = ar_index + nsyms * 4;
+ 	for (i = 0; i < nsyms; i++) {
+-		int off = get_be32((void *) ar_index + i * 4) +
++		int off = get_be32((void *) (ar_index + i * 4)) +
+ 				sizeof(struct arhdr);
+ 		if (sym_undef(oe, ar_name)) {
+ 			outelf_add(oe, ar - base + off);
+@@ -739,7 +786,10 @@ static int lib_find(char *path, char *lib)
+ 	struct stat st;
+ 	int i;
+ 	for (i = 0; i < nlibdirs; i++) {
+-		sprintf(path, "%s/lib%s.a", libdirs[i], lib);
++		if (lib[0] == ':')
++			sprintf(path, "%s/%s", libdirs[i], lib + 1);
++		else
++			sprintf(path, "%s/lib%s.a", libdirs[i], lib);
+ 		if (!stat(path, &st))
+ 			return 0;
+ 	}
+@@ -786,7 +836,7 @@ static char *obj_add(struct outelf *oe, char *path)
+ int main(int argc, char **argv)
+ {
+ 	char out[PATHLEN] = "a.out";
+-	struct outelf oe;
++	static struct outelf oe;
+ 	char *mem[MAXFILES];
+ 	int nmem = 0;
+ 	int fd;
+@@ -802,7 +852,8 @@ int main(int argc, char **argv)
+ 		}
+ 		if (argv[i][1] == 'l') {
+ 			char path[PATHLEN];
+-			if (lib_find(path, argv[i] + 2))
++			char *lib = argv[i][2] ? argv[i] + 2 : argv[++i];
++			if (lib_find(path, lib))
+ 				die("neatld: cannot find library!");
+ 			mem[nmem++] = obj_add(&oe, path);
+ 			continue;

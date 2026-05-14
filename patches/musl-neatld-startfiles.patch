@@ -1,0 +1,29 @@
+diff --git a/Makefile b/Makefile
+index fb57b0a..eaae16a 100644
+--- a/Makefile
++++ b/Makefile
+@@ -71,6 +71,10 @@ ALL_TOOLS =
+ -include config.mak
+ -include $(srcdir)/arch/$(ARCH)/arch.mak
+ 
++ifeq ($(ARCH),x86_64)
++CRT_LIBS += lib/start.o
++endif
++
+ ifeq ($(ARCH),)
+ 
+ all:
+@@ -140,9 +144,12 @@ lib/libc.a: $(AOBJS)
+ 	$(RANLIB) $@
+ 
+ ifeq ($(ARCH),x86_64)
++lib/start.o: obj/crt/x86_64/start.o
++	cp $< $@
++
+ lib/crt1.o: obj/crt/crt1.o obj/crt/x86_64/start.o
+ 	rm -f $@
+-	$(CC) -nostdlib -Wl,-r -o $@ obj/crt/x86_64/start.o $<
++	cp obj/crt/crt1.o $@
+ endif
+ 
+ $(EMPTY_LIBS):

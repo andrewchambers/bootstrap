@@ -1,0 +1,23 @@
+diff --git a/configure b/configure
+index 7de32ca..fdd27b6 100755
+--- a/configure
++++ b/configure
+@@ -58,8 +58,16 @@ case "$target" in
+ 	riscv64*) DEFAULT_LDSO=/lib/ld-musl-riscv64.so.1 ;;
+ 	*) fail "unsuported target '$target'"
+ 	esac
+-	startfiles='"-l", ":crt1.o", "-l", ":crti.o"'
+-	endfiles='"-l", "c", "-l", ":crtn.o"'
++	case "$target" in
++	x86_64*)
++		startfiles='"-l", ":start.o", "-l", ":crt1.o"'
++		endfiles='"-l", "c"'
++		;;
++	*)
++		startfiles='"-l", ":crt1.o", "-l", ":crti.o"'
++		endfiles='"-l", "c", "-l", ":crtn.o"'
++		;;
++	esac
+ 	;;
+ *-linux-*gnu*)
+ 	test "${DEFAULT_LDSO+set}" || case "$target" in
